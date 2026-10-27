@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Zuri Hub Script</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: radial-gradient(circle at 30% 20%, #1c0f33, #07040d 80%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* ambient floating particles background */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image:
+                radial-gradient(2px 2px at 20% 30%, rgba(180, 120, 255, 0.25), transparent),
+                radial-gradient(2px 2px at 80% 20%, rgba(140, 80, 255, 0.2), transparent),
+                radial-gradient(1.5px 1.5px at 40% 70%, rgba(200, 150, 255, 0.18), transparent),
+                radial-gradient(2px 2px at 70% 85%, rgba(160, 90, 255, 0.2), transparent),
+                radial-gradient(1.5px 1.5px at 10% 90%, rgba(190, 130, 255, 0.15), transparent),
+                radial-gradient(1.5px 1.5px at 90% 60%, rgba(150, 100, 255, 0.18), transparent);
+            background-size: 200% 200%;
+            animation: drift 20s ease-in-out infinite alternate;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes drift {
+            0% { background-position: 0% 0%; }
+            100% { background-position: 100% 100%; }
+        }
+
+        /* 9:16 container */
+        .container {
+            width: 100%;
+            max-width: 380px;
+            aspect-ratio: 9 / 16;
+            background: linear-gradient(160deg, #160f26 0%, #0a0614 100%);
+            border-radius: 44px;
+            box-shadow:
+                0 30px 50px -15px rgba(0, 0, 0, 0.9),
+                0 0 0 1.5px rgba(160, 90, 255, 0.25),
+                0 0 40px rgba(140, 0, 255, 0.18);
+            padding: 30px 20px 26px 20px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(170, 110, 255, 0.25);
+            position: relative;
+            z-index: 1;
+            backdrop-filter: blur(2px);
+        }
+
+        /* status bar top */
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.62rem;
+            color: #8a7aa8;
+            margin-bottom: 16px;
+            letter-spacing: 0.4px;
+            padding: 0 4px;
+            font-weight: 500;
+        }
+
+        .status-left {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #4ade80;
+            box-shadow: 0 0 6px #4ade80, 0 0 12px #4ade80aa;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* ---------- TITLE ---------- */
+        .title {
+            text-align: center;
+            font-weight: 800;
+            font-size: 1.75rem;
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
+            word-break: break-word;
+            background: linear-gradient(135deg, #f0e2ff 0%, #c9a0ff 60%, #a86aff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 2px 12px rgba(168, 85, 255, 0.45));
+        }
+
+        /* ---------- SUBTITLE (transparent gray) ---------- */
+        .subtitle {
+            text-align: center;
+            font-weight: 500;
+            font-size: 0.88rem;
+            color: #d5c6e8;
+            background: rgba(80, 75, 95, 0.3);
+            display: inline-block;
+            padding: 6px 18px;
+            border-radius: 60px;
+            margin: 0 auto 22px auto;
+            letter-spacing: 0.3px;
+            border: 1px solid rgba(160, 150, 180, 0.2);
+            backdrop-filter: blur(6px);
+            width: fit-content;
+        }
+
+        /* ---------- SCRIPT AREA (centered) ---------- */
+        .clipboard-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 6px 0 14px 0;
+        }
+
+        .clipboard {
+            width: 100%;
+            max-width: 290px;
+            background: rgba(22, 16, 34, 0.7);
+            border-radius: 24px;
+            padding: 22px 18px 20px 18px;
+            border: 1.5px solid rgba(150, 110, 220, 0.45);
+            box-shadow:
+                0 0 0 1px rgba(80, 50, 120, 0.3) inset,
+                0 0 24px rgba(140, 0, 255, 0.15),
+                0 14px 30px -10px #000000;
+            backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+        }
+
+        /* script meta row: label + verified badge */
+        .script-meta {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.62rem;
+            color: #9d8bc0;
+            font-weight: 600;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            padding: 0 2px;
+        }
+
+        .verified {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: #b78aff;
+            text-transform: none;
+            font-weight: 500;
+            letter-spacing: 0.2px;
+            font-size: 0.6rem;
+        }
+
+        .verified svg {
+            width: 11px;
+            height: 11px;
+            fill: #b78aff;
+            filter: drop-shadow(0 0 3px #a855ff);
+        }
+
+        /* outline around the script only */
+        .script-outline {
+            width: 100%;
+            border: 1.5px solid rgba(150, 110, 220, 0.5);
+            border-radius: 16px;
+            padding: 14px 12px;
+            background: rgba(12, 8, 20, 0.65);
+            box-shadow:
+                inset 0 0 12px rgba(80, 30, 150, 0.25),
+                0 2px 8px #00000060;
+            transition: 0.15s;
+        }
+
+        .script-text {
+            display: block;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 0.76rem;
+            line-height: 1.55;
+            color: #dccbff;
+            word-break: break-all;
+            white-space: pre-wrap;
+            text-align: left;
+            letter-spacing: -0.01em;
+            max-height: 130px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #6a4f9e transparent;
+        }
+
+        .script-text::-webkit-scrollbar {
+            width: 4px;
+        }
+        .script-text::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .script-text::-webkit-scrollbar-thumb {
+            background: #6a4f9e;
+            border-radius: 10px;
+        }
+
+        /* footer meta inside clipboard */
+        .script-footer {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.6rem;
+            color: #7d6a9e;
+            padding: 0 2px;
+            letter-spacing: 0.3px;
+        }
+
+        .script-footer .updated {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* ---------- COPY BUTTON (polished) ---------- */
+        .copy-btn {
+            background: linear-gradient(180deg, #9b5cf0 0%, #5a1fa8 100%);
+            border: none;
+            border-radius: 60px;
+            padding: 15px 20px;
+            font-weight: 700;
+            font-size: 1.05rem;
+            letter-spacing: 0.5px;
+            color: #ffffff;
+            text-shadow: 0 1px 4px #00000070;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+            box-shadow:
+                0 10px 22px -6px #000000cc,
+                0 0 0 1px rgba(200, 160, 255, 0.4) inset,
+                0 0 18px rgba(150, 60, 255, 0.35);
+            transition: all 0.12s ease;
+            margin-top: 12px;
+            width: 100%;
+            border: 1px solid rgba(200, 160, 255, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .copy-btn:active {
+            transform: scale(0.97);
+            box-shadow:
+                0 5px 10px -4px #000000,
+                0 0 0 1px rgba(220, 190, 255, 0.7) inset,
+                0 0 26px rgba(180, 100, 255, 0.5);
+            background: linear-gradient(180deg, #a96dff, #6a2eb8);
+        }
+
+        /* shine effect */
+        .copy-btn::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -80%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+            transform: skewX(-20deg);
+            transition: left 0.5s;
+        }
+
+        .copy-btn:hover::after {
+            left: 130%;
+        }
+
+        .copy-btn.copied {
+            background: linear-gradient(180deg, #3ddc84 0%, #1f9e5e 100%);
+            box-shadow:
+                0 10px 22px -6px #000000cc,
+                0 0 0 1px rgba(180, 255, 210, 0.5) inset,
+                0 0 18px rgba(60, 220, 130, 0.4);
+            border-color: rgba(180, 255, 210, 0.6);
+        }
+
+        /* ---------- FEEDBACK TOAST ---------- */
+        .toast-message {
+            text-align: center;
+            font-size: 0.82rem;
+            color: #c9aaff;
+            text-shadow: 0 0 8px #a855ff;
+            font-weight: 500;
+            margin-top: 8px;
+            height: 18px;
+            transition: opacity 0.2s;
+            opacity: 0;
+            letter-spacing: 0.2px;
+        }
+
+        .toast-message.show {
+            opacity: 1;
+        }
+
+        /* ---------- RESPONSIVE ---------- */
+        @media (max-height: 750px) {
+            .container {
+                padding: 20px 16px;
+            }
+            .title {
+                font-size: 1.45rem;
+            }
+            .clipboard {
+                padding: 18px 14px 16px 14px;
+                gap: 10px;
+            }
+            .script-text {
+                font-size: 0.68rem;
+                max-height: 110px;
+            }
+            .copy-btn {
+                padding: 12px 16px;
+                font-size: 0.95rem;
+            }
+            .subtitle {
+                margin-bottom: 14px;
+                font-size: 0.82rem;
+            }
+            .status-bar {
+                margin-bottom: 10px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .container {
+                border-radius: 32px;
+                padding: 22px 14px;
+            }
+            .title {
+                font-size: 1.55rem;
+            }
+            .clipboard {
+                max-width: 260px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- status bar -->
+        <div class="status-bar">
+            <div class="status-left">
+                <span class="live-dot"></span>
+                <span>ONLINE · v2.4.1</span>
+            </div>
+            <span>ZURI HUB</span>
+        </div>
+
+        <!-- Title -->
+        <div class="title">Zuri Hub Script</div>
+        <!-- Subtitle (transparent gray, no blue) -->
+        <div class="subtitle">For Murder Mystery 2 only!</div>
+
+        <!-- Clipboard (centered, with outline) -->
+        <div class="clipboard-wrapper">
+            <div class="clipboard">
+                <!-- script meta row -->
+                <div class="script-meta">
+                    <span>Scriptblox</span>
+                    <span class="verified">
+                        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+                        VERIFIED
+                    </span>
+                </div>
+
+                <!-- Outline only around the script -->
+                <div class="script-outline">
+                    <span class="script-text" id="scriptText">loadstring(game:HttpGet("https://raw.githubusercontent.com/NikiMM2/ZuriHub/refs/heads/main/script"))()</span>
+                </div>
+
+                <!-- footer meta -->
+                <div class="script-footer">
+                    <span class="updated">
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="#7d6a9e"><path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z"/></svg>
+                        Updated 2h ago
+                    </span>
+                    <span>MM2</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Copy button -->
+        <button class="copy-btn" id="copyBtn">
+            <span id="btnLabel">Copy Script</span>
+        </button>
+        <!-- feedback message -->
+        <div class="toast-message" id="toastMsg">✅ Copied to clipboard!</div>
+    </div>
+
+    <script>
+        (function() {
+            const copyButton = document.getElementById('copyBtn');
+            const btnLabel = document.getElementById('btnLabel');
+            const scriptText = document.getElementById('scriptText');
+            const toastMsg = document.getElementById('toastMsg');
+
+            const SCRIPT_CONTENT = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/NikiMM2/ZuriHub/refs/heads/main/script"))()';
+
+            scriptText.textContent = SCRIPT_CONTENT;
+
+            async function copyScriptToClipboard() {
+                if (copyButton.classList.contains('copied')) return;
+
+                try {
+                    await navigator.clipboard.writeText(SCRIPT_CONTENT);
+                    onCopySuccess();
+                } catch (err) {
+                    try {
+                        const textarea = document.createElement('textarea');
+                        textarea.value = SCRIPT_CONTENT;
+                        textarea.style.position = 'fixed';
+                        textarea.style.opacity = '0';
+                        textarea.style.pointerEvents = 'none';
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        textarea.setSelectionRange(0, textarea.value.length);
+                        const success = document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                        if (success) {
+                            onCopySuccess();
+                        } else {
+                            showToast('❌ Press Ctrl+C to copy', true);
+                        }
+                    } catch (fallbackErr) {
+                        showToast('❌ Copy failed. Select manually.', true);
+                    }
+                }
+            }
+
+            function onCopySuccess() {
+                // visual success state
+                copyButton.classList.add('copied');
+                btnLabel.textContent = 'Copied!';
+
+                showToast('✅ Copied to clipboard!');
+
+                if (window.copyTimeout) clearTimeout(window.copyTimeout);
+                window.copyTimeout = setTimeout(() => {
+                    copyButton.classList.remove('copied');
+                    btnLabel.textContent = 'Copy Script';
+                }, 1800);
+            }
+
+            function showToast(message, isError = false) {
+                toastMsg.textContent = message;
+                toastMsg.style.color = isError ? '#ffa0a0' : '#c9aaff';
+                toastMsg.style.textShadow = isError ? '0 0 8px #cc0000' : '0 0 8px #a855ff';
+                toastMsg.classList.add('show');
+
+                if (window.toastTimeout) clearTimeout(window.toastTimeout);
+                window.toastTimeout = setTimeout(() => {
+                    toastMsg.classList.remove('show');
+                }, 2000);
+            }
+
+            copyButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                copyScriptToClipboard();
+            });
+
+            copyButton.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    copyScriptToClipboard();
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
